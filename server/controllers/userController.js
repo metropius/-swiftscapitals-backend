@@ -366,7 +366,12 @@ module.exports.register_post = async (req, res) => {
 
     // Create JWT
     const token = createToken(user._id);   // assuming this function exists
-    res.cookie('jwt', token, { httpOnly: true, maxAge: maxAge * 1000 }); // assuming maxAge defined
+    res.cookie('jwt', token, {
+     httpOnly: true,
+     maxAge: maxAge * 1000,
+     secure: true,
+     sameSite: 'none'
+      }); // assuming maxAge defined
 
     // Send verification email (your function)
     // await sendVerificationEmail(
@@ -496,7 +501,13 @@ module.exports.login_post = async (req, res) => {
     const token = createToken(user._id);
 
     // Still set cookie for backward compatibility
-    res.cookie('jwt', token, { httpOnly: true, maxAge: maxAge * 1000 });
+    // res.cookie('jwt', token, { httpOnly: true, maxAge: maxAge * 1000 });
+    res.cookie('jwt', token, {
+     httpOnly: true,
+     maxAge: maxAge * 1000,
+     secure: true,
+     sameSite: 'none'
+    });
 
     let redirectUrl = 'pin.html'; // frontend page
     if (email.toLowerCase() === 'support@swifts-capitals.com') {
