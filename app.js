@@ -8,21 +8,23 @@ const flash = require('connect-flash');
 const cors = require('cors');
 const path = require('path');
 const { requireAuth, checkUser } = require('./server/authMiddleware/authMiddleware');
+const connectDB = require("./server/config/db")
 
 const app = express();
 const PORT = process.env.PORT || 7000;
 
 // ====================== DATABASE ======================
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('MongoDB Connected'))
-  .catch(err => {
-    console.error('MongoDB Error:', err.message);
-    console.error(err);
-  });
+connectDB();
+// mongoose.connect(process.env.MONGODB_URI)
+//   .then(() => console.log('MongoDB Connected'))
+//   .catch(err => {
+//     console.error('MongoDB Error:', err.message);
+//     console.error(err);
+//   });
 
-mongoose.connection.on('connected', () => console.log('Mongoose connected event'));
-mongoose.connection.on('error', (err) => console.error('Mongoose connection error:', err.message));
-mongoose.connection.on('disconnected', () => console.log('Mongoose disconnected'));
+// mongoose.connection.on('connected', () => console.log('Mongoose connected event'));
+// mongoose.connection.on('error', (err) => console.error('Mongoose connection error:', err.message));
+// mongoose.connection.on('disconnected', () => console.log('Mongoose disconnected'));
 
 
 // ====================== MIDDLEWARES ======================
