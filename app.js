@@ -15,7 +15,15 @@ const PORT = process.env.PORT || 7000;
 // ====================== DATABASE ======================
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('MongoDB Connected'))
-  .catch(err => console.log('MongoDB Error:', err));
+  .catch(err => {
+    console.error('MongoDB Error:', err.message);
+    console.error(err);
+  });
+
+mongoose.connection.on('connected', () => console.log('Mongoose connected event'));
+mongoose.connection.on('error', (err) => console.error('Mongoose connection error:', err.message));
+mongoose.connection.on('disconnected', () => console.log('Mongoose disconnected'));
+
 
 // ====================== MIDDLEWARES ======================
 app.use(express.json());
