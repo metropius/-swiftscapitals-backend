@@ -8,56 +8,65 @@ const flash = require('connect-flash');
 const cors = require('cors');
 const path = require('path');
 const { requireAuth, checkUser } = require('./server/authMiddleware/authMiddleware');
-// const connectDB = require("./server/config/db")
 
 const app = express();
 const PORT = process.env.PORT || 7000;
 
 // ====================== DATABASE ======================
-// connectDB();
-mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://marcelpolocha1:081358pius@cluster0.f9a85hv.mongodb.net/switchswiftBank')
+mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('MongoDB Connected'))
   .catch(err => console.log('MongoDB Error:', err));
 
 // ====================== MIDDLEWARES ======================
-// app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(methodOverride('_method'));
 
-// CORS - Good for development
+// ========== CORS (production-ready) ==========
+const allowedOrigins = [
+  process.env.FRONTEND_URL,                    // https://your-site-name.netlify.app
+  'http://localhost:5500',
+  'http://127.0.0.1:5500',
+  'http://localhost:3000'
+].filter(Boolean);
+
 app.use(cors({
-  origin: true,
+  origin: function (origin, callback) {
+    // allow requests with no origin (mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 }));
 
-// Session + Flash (still useful for any remaining EJS pages)
+// Session (important for transfer OTP / pending deposit)
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'piuscandothis',
+  secret: process.env.SESSION_SECRET || 'change-this-to-a-long-random-string',
   resave: false,
   saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // true on Render (HTTPS)
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    maxAge: 24 * 60 * 60 * 1000 // 1 day
+  }
 }));
 app.use(flash());
 
-// Make flash available to views (optional)
 app.use((req, res, next) => {
   res.locals.messages = req.flash();
   next();
 });
 
-// View engine (only needed if you still have some EJS pages)
-// app.set('view engine', 'ejs');
-
 // ====================== ROUTES ======================
-app.use(checkUser); // runs on every request
+app.use(checkUser);
 
-// Public routes (login, register, etc.)
 app.use('/', require('./server/Route/indexRoute'));
-
-// Protected routes
 app.use('/', requireAuth, require('./server/Route/userRoute'));
 app.use('/', requireAuth, require('./server/Route/adminRoute'));
 
@@ -66,7 +75,6 @@ app.use((err, req, res, next) => {
   console.error('Error:', err.message);
   console.error(err.stack);
 
-
   const statusCode = err.status || err.statusCode || 500;
 
   const wantsJson =
@@ -74,21 +82,19 @@ app.use((err, req, res, next) => {
     req.headers.accept?.includes('application/json') ||
     req.headers['content-type']?.includes('application/json');
 
-  if (wantsJson) {
+  if (wantsJson || err.message === 'Not allowed by CORS') {
     return res.status(statusCode).json({
       success: false,
       message: err.message || 'Something went wrong!'
     });
   }
 
-  // Fallback for EJS pages
   if (typeof req.flash === 'function') {
     req.flash('error', err.message || 'Something went wrong!');
   }
   return res.redirect(req.get('Referrer') || '/');
 });
 
-// ====================== START SERVER ======================
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
