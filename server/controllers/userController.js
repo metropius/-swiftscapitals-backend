@@ -26,9 +26,13 @@ cloudinary.config({
 
 // Generate verification URL dynamically
 const generateVerificationUrl = (verificationToken) => {
-  const baseUrl = process.env.BASE_URL || 'http://localhost:7000';
-  return `${baseUrl}/verify-email?user=${verificationToken}&ver_code=${verificationToken}`;
+  const apiBase = ( process.env.BACKEND_URL || 'https://swiftscapitals-backend.onrender.com').replace(/\/$/, '');
+  return `${apiBase}/verify-email?user=${verificationToken}&ver_code=${verificationToken}`;
 };
+// const generateVerificationUrl = (verificationToken) => {
+//   const baseUrl = process.env.BASE_URL || 'http://localhost:7000';
+//   return `${baseUrl}/verify-email?user=${verificationToken}&ver_code=${verificationToken}`;
+// };
 
 // Send verification email using Resend
 const sendVerificationEmail = async (email, firstname,lastname, verificationToken) => {
@@ -272,49 +276,203 @@ const createToken = (id) => {
 };
 
 // Unchanged routes (homePage, aboutPage, etc.)
-module.exports.homePage = (req, res) => { res.render("index"); };
-module.exports.aboutPage = (req, res) => { res.render("about"); };
-module.exports.businessPage = (req, res) => { res.render("business"); };
-module.exports.personalPage = (req, res) => { res.render("personal"); };
-module.exports.outcardPage = (req, res) => { res.render("cards"); };
-module.exports.appPage = (req, res) => { res.render("apps"); };
-module.exports.loanPages = (req, res) => { res.render("loans"); };
-module.exports.contactPage = (req, res) => { res.render("contact"); };
-module.exports.securityPage = (req, res) => { res.render("converter"); };
-module.exports.licensesPage = (req, res) => { res.render("chart"); };
-module.exports.alertsPage = (req, res) => { res.render("alerts"); };
-module.exports.faqPage = (req, res) => { res.render("faq"); };
-module.exports.privacyPage = (req, res) => { res.render("privacy-policy"); };
-module.exports.termsPage = (req, res) => { res.render("terms-of-service"); };
-module.exports.policyPage = (req, res) => { res.render("policy"); };
-module.exports.termPage = (req, res) => { res.render("term"); };
-module.exports.loginAdmin = (req, res) => { res.render('loginAdmin'); };
-module.exports.registerPage = (req, res) => { res.render("register"); };
-// module.exports.loginPage = (req, res) => { res.render("login"); };
-// Show login page (GET /login)
-module.exports.loginPage = (req, res) => {
-  // If user is already logged in → redirect to PIN or dashboard
-  if (res.locals.user) {
-    // Optional: already logged in → go straight to PIN or dashboard
-    return res.redirect('/pin');
-  }
-  res.render("login", { title: "Login - swiftcaptial" });
+// ────────────────────────────────────────────────
+// PUBLIC / MARKETING PAGES (no auth) – JSON only
+// Frontend lives on Netlify; backend is API only
+// ────────────────────────────────────────────────
+
+const frontendUrl = () =>
+  (process.env.FRONTEND_URL).replace(/\/$/, '');
+
+module.exports.homePage = (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: 'Swift Capitals API is running',
+    frontend: frontendUrl(),
+    time: new Date().toISOString()
+  });
 };
 
+module.exports.aboutPage = (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: 'Use the frontend about page',
+    redirect: `${frontendUrl()}/about.html`
+  });
+};
+
+module.exports.businessPage = (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: 'Use the frontend business page',
+    redirect: `${frontendUrl()}/business.html`
+  });
+};
+
+module.exports.personalPage = (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: 'Use the frontend personal page',
+    redirect: `${frontendUrl()}/personal.html`
+  });
+};
+
+module.exports.outcardPage = (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: 'Use the frontend cards page',
+    redirect: `${frontendUrl()}/card.html`
+  });
+};
+
+module.exports.appPage = (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: 'Use the frontend apps page',
+    redirect: `${frontendUrl()}/apps.html`
+  });
+};
+
+module.exports.loanPages = (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: 'Use the frontend loans page',
+    redirect: `${frontendUrl()}/loans.html`
+  });
+};
+
+module.exports.contactPage = (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: 'Use the frontend contact page',
+    redirect: `${frontendUrl()}/contact.html`
+  });
+};
+
+module.exports.securityPage = (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: 'Use the frontend converter page',
+    redirect: `${frontendUrl()}/converter.html`
+  });
+};
+
+module.exports.licensesPage = (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: 'Use the frontend chart page',
+    redirect: `${frontendUrl()}/chart.html`
+  });
+};
+
+module.exports.alertsPage = (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: 'Use the frontend alerts page',
+    redirect: `${frontendUrl()}/alerts.html`
+  });
+};
+
+module.exports.faqPage = (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: 'Use the frontend FAQ page',
+    redirect: `${frontendUrl()}/faq.html`
+  });
+};
+
+module.exports.privacyPage = (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: 'Use the frontend privacy policy page',
+    redirect: `${frontendUrl()}/privacy-policy.html`
+  });
+};
+
+module.exports.termsPage = (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: 'Use the frontend terms of service page',
+    redirect: `${frontendUrl()}/terms-of-service.html`
+  });
+};
+
+module.exports.policyPage = (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: 'Use the frontend policy page',
+    redirect: `${frontendUrl()}/policy.html`
+  });
+};
+
+module.exports.termPage = (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: 'Use the frontend term page',
+    redirect: `${frontendUrl()}/term.html`
+  });
+};
+
+module.exports.loginAdmin = (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: 'Use the frontend admin login page',
+    redirect: `${frontendUrl()}/loginAdmin.html`
+  });
+};
+
+module.exports.registerPage = (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: 'Use the frontend register page',
+    redirect: `${frontendUrl()}/register.html`
+  });
+};
+
+// GET /login – API only (browser UI is login.html on Netlify)
+module.exports.loginPage = (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: 'Use the frontend login page',
+    redirect: `${frontendUrl()}/login.html`
+  });
+};
+
+// Show login page (GET /login)
+// module.exports.loginPage = (req, res) => {
+//   // If user is already logged in → redirect to PIN or dashboard
+//   if (res.locals.user) {
+//     // Optional: already logged in → go straight to PIN or dashboard
+//     return res.redirect('/pin');
+//   }
+//   res.render("login", { title: "Login - swiftcaptial" });
+// };
+
+// ────────────────────────────────────────────────
+// REGISTER – POST /register
+// ────────────────────────────────────────────────
 module.exports.register_post = async (req, res) => {
+  console.log('========== REGISTER_POST START ==========');
+  console.log('[REGISTER] Raw body keys:', Object.keys(req.body || {}));
+  console.log('[REGISTER] Body (password hidden):', {
+    ...req.body,
+    password: req.body?.password ? '***' : undefined,
+    password_confirmation: req.body?.password_confirmation ? '***' : undefined,
+    pin: req.body?.pin ? '****' : undefined
+  });
+
   const {
     firstname,
     midname = '',
     lastname,
     username,
     email,
-    phone,           // ← was tel in your destructuring
+    phone,
     country,
-    accounttype,  // ← was account in your code
+    accounttype,
     pin,
     password,
     password_confirmation,
-    // optional ones
     postal = 'postal code',
     address = 'your address',
     state = 'your state',
@@ -324,24 +482,59 @@ module.exports.register_post = async (req, res) => {
     currency = '$'
   } = req.body;
 
+  console.log('[REGISTER] Destructured fields:', {
+    firstname: !!firstname,
+    midname: !!midname,
+    lastname: !!lastname,
+    username: !!username,
+    email: email || null,
+    phone: !!phone,
+    country: country || null,
+    accounttype: accounttype || null,
+    pinLength: pin ? String(pin).length : 0,
+    hasPassword: !!password,
+    hasPasswordConfirmation: !!password_confirmation
+  });
+
   try {
-    // Basic upfront validation (extra safety layer)
+    // Basic upfront validation
+    console.log('[REGISTER] Step 1: Required fields validation');
     if (!firstname || !lastname || !username || !email || !phone || !country || !accounttype || !pin || !password) {
+      console.log('[REGISTER] FAIL – missing required field(s):', {
+        firstname: !firstname,
+        lastname: !lastname,
+        username: !username,
+        email: !email,
+        phone: !phone,
+        country: !country,
+        accounttype: !accounttype,
+        pin: !pin,
+        password: !password
+      });
       throw new Error('Please fill all required fields');
     }
+    console.log('[REGISTER] Step 1 OK');
 
+    console.log('[REGISTER] Step 2: Password match check');
     if (password !== password_confirmation) {
+      console.log('[REGISTER] FAIL – passwords do not match');
       throw new Error('Passwords do not match');
     }
+    console.log('[REGISTER] Step 2 OK');
 
+    console.log('[REGISTER] Step 3: PIN validation');
     if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+      console.log('[REGISTER] FAIL – invalid PIN:', { length: pin.length, value: '****' });
       throw new Error('PIN must be exactly 4 digits');
     }
+    console.log('[REGISTER] Step 3 OK');
 
-
-    // Generate random account number (10 digits)
+    // Generate account number
+    console.log('[REGISTER] Step 4: Generate account_no');
     const account_no = Math.floor(1000000000 + Math.random() * 9000000000).toString();
+    console.log('[REGISTER] account_no generated:', account_no);
 
+    console.log('[REGISTER] Step 5: User.create() starting...');
     const user = await User.create({
       firstname,
       midname,
@@ -352,7 +545,7 @@ module.exports.register_post = async (req, res) => {
       country,
       accounttype,
       pin,
-      password,               // plain text – consider hashing later
+      password,
       account_no,
       postal,
       address,
@@ -361,70 +554,84 @@ module.exports.register_post = async (req, res) => {
       city,
       gender,
       currency
-      // defaults handle the rest
+    });
+    console.log('[REGISTER] Step 5 OK – user created:', {
+      _id: user._id,
+      email: user.email,
+      username: user.username,
+      account_no: user.account_no
     });
 
-    // Create JWT
-    const token = createToken(user._id);   // assuming this function exists
+    console.log('[REGISTER] Step 6: Create JWT');
+    const token = createToken(user._id);
+    console.log('[REGISTER] JWT created (length):', token ? token.length : 0);
+
+    console.log('[REGISTER] Step 7: Set cookie');
     res.cookie('jwt', token, {
-     httpOnly: true,
-     maxAge: maxAge * 1000,
-     secure: true,
-     sameSite: 'none'
-      }); // assuming maxAge defined
+      httpOnly: true,
+      maxAge: maxAge * 1000,
+      secure: true,
+      sameSite: 'none'
+    });
+    console.log('[REGISTER] Cookie set');
 
-    // Send verification email (your function)
-    // await sendVerificationEmail(
-    //   user.email,
-    //   user.firstname,
-    //   user.lastname ? ' ' + user.lastname : '',
-    //   verificationToken
-    // );
+    // Verification email still commented out
+    // console.log('[REGISTER] Step 8: Send verification email (skipped)');
 
-    // Success JSON response
+    console.log('[REGISTER] SUCCESS – sending 201 JSON');
+    console.log('========== REGISTER_POST END (success) ==========');
+
     return res.status(201).json({
-  success: true,
-  message: 'Registration successful',
-  token,
-  user: {
-    _id: user._id,
-    firstname: user.firstname,
-    lastname: user.lastname,
-    email: user.email
-  },
-  redirect: 'dashboard.html'   // or '/login.html' if you still want email verification first
-});
+      success: true,
+      message: 'Registration successful',
+      token,
+      user: {
+        _id: user._id,
+        firstname: user.firstname,
+        lastname: user.lastname,
+        email: user.email
+      },
+      redirect: 'dashboard.html'
+    });
 
   } catch (err) {
-    let errors = {};
-
-    // Handle Mongoose duplicate key error (code 11000)
-    if (err.code === 11000) {
-      const field = Object.keys(err.keyValue)[0];
-      errors[field] = `This ${field} is already taken. Please choose another.`;
-    }
-
-    // Handle Mongoose validation errors
-    else if (err.name === 'ValidationError') {
-      Object.keys(err.errors).forEach(key => {
-        errors[key] = err.errors[key].message;
+    console.error('========== REGISTER_POST ERROR ==========');
+    console.error('[REGISTER] err.name:', err.name);
+    console.error('[REGISTER] err.message:', err.message);
+    console.error('[REGISTER] err.code:', err.code);
+    console.error('[REGISTER] err.keyValue:', err.keyValue);
+    if (err.errors) {
+      console.error('[REGISTER] mongoose validation errors:', Object.keys(err.errors));
+      Object.keys(err.errors).forEach((key) => {
+        console.error(`  - ${key}:`, err.errors[key].message);
       });
     }
+    console.error('[REGISTER] stack:', err.stack);
 
-    // Generic or custom Error
-    else {
+    let errors = {};
+
+    if (err.code === 11000) {
+      const field = Object.keys(err.keyValue || {})[0] || 'field';
+      errors[field] = `This ${field} is already taken. Please choose another.`;
+      console.log('[REGISTER] Handled as duplicate key on:', field);
+    } else if (err.name === 'ValidationError') {
+      Object.keys(err.errors || {}).forEach((key) => {
+        errors[key] = err.errors[key].message;
+      });
+      console.log('[REGISTER] Handled as ValidationError');
+    } else {
       const message = err.message || 'Registration failed. Please try again.';
-      if (message.includes('incorrect') || message.includes('required')) {
-        errors.general = message;
-      } else {
-        errors.general = 'An unexpected error occurred. Please try again later.';
-      }
+      errors.general = message;
+      console.log('[REGISTER] Handled as generic/custom error:', message);
     }
 
-    // Prepare user-friendly message
-    let errorMsg = errors.general || 
-      Object.values(errors).filter(Boolean).join(' • ') || 
+    let errorMsg =
+      errors.general ||
+      Object.values(errors).filter(Boolean).join(' • ') ||
       'Registration failed. Please check your details.';
+
+    console.log('[REGISTER] Response 400:', { message: errorMsg, errors });
+    console.log('========== REGISTER_POST END (error) ==========');
 
     return res.status(400).json({
       success: false,
@@ -435,35 +642,73 @@ module.exports.register_post = async (req, res) => {
 };
 
 module.exports.verifyEmailPage = (req, res) => {
-  res.render("verify-email");
+  return res.status(200).json({
+    success: true,
+    message: 'Use the frontend verify-email page',
+    redirect: `${frontendUrl()}/verify-email.html`
+  });
 };
 
 // verify email functionalities
 
+// ──────────────────────────────────────────────────────────────
+// VERIFY EMAIL (GET) – JSON / redirect for static frontend
+// Route: GET /verify-email?user=TOKEN&ver_code=TOKEN
+// ──────────────────────────────────────────────────────────────
 module.exports.verifyEmail = async (req, res) => {
   const { user: token, ver_code } = req.query;
+  const wantsHtml =
+    req.accepts('html') &&
+    !req.xhr &&
+    !req.headers.accept?.includes('application/json');
+
+  const redirectTo = (pathWithQuery) => {
+    const url = `${frontendUrl}${pathWithQuery.startsWith('/') ? pathWithQuery : `/${pathWithQuery}`}`;
+    if (wantsHtml) {
+      return res.redirect(url);
+    }
+    // API / Axios clients
+    const isError = pathWithQuery.includes('error=');
+    return res.status(isError ? 400 : 200).json({
+      success: !isError,
+      message: decodeURIComponent(
+        (pathWithQuery.split('error=')[1] || pathWithQuery.split('success=')[1] || '').split('&')[0] || ''
+      ),
+      redirect: url
+    });
+  };
 
   if (!token || !ver_code) {
-    return res.redirect('/register?error=' + encodeURIComponent('Invalid verification link.'));
+    return redirectTo(
+      '/register.html?error=' + encodeURIComponent('Invalid verification link.')
+    );
   }
 
   try {
-    // Find user by verificationToken (which is what we passed as "user" in URL)
+    // Find user by verificationToken
     const user = await User.findOne({
       verificationToken: token,
       verificationTokenExpires: { $gt: Date.now() }
     });
 
     if (!user) {
-      return res.redirect('/register?error=' + encodeURIComponent('Invalid or expired verification link. Please register again.'));
+      return redirectTo(
+        '/register.html?error=' +
+          encodeURIComponent('Invalid or expired verification link. Please register again.')
+      );
     }
 
     if (user.isVerified) {
-      return res.redirect('/login?success=' + encodeURIComponent('Your account is already verified. You can now log in.'));
+      return redirectTo(
+        '/login.html?success=' +
+          encodeURIComponent('Your account is already verified. You can now log in.')
+      );
     }
 
     if (ver_code !== token) {
-      return res.redirect('/register?error=' + encodeURIComponent('Invalid verification code.'));
+      return redirectTo(
+        '/register.html?error=' + encodeURIComponent('Invalid verification code.')
+      );
     }
 
     // Verify the user
@@ -482,42 +727,79 @@ module.exports.verifyEmail = async (req, res) => {
       user.createdAt
     );
 
-    res.redirect('/login?success=' + encodeURIComponent('Email verified successfully! You can now log in.'));
-
+    return redirectTo(
+      '/login.html?success=' +
+        encodeURIComponent('Email verified successfully! You can now log in.')
+    );
   } catch (err) {
     console.error('Verification error:', err);
-    res.redirect('/register?error=' + encodeURIComponent('Something went wrong during verification. Please try again.'));
+    return redirectTo(
+      '/register.html?error=' +
+        encodeURIComponent('Something went wrong during verification. Please try again.')
+    );
   }
 };
 
 
-
-// Handle login submission (POST /login)
+// ────────────────────────────────────────────────
+// LOGIN – POST /login
+// ────────────────────────────────────────────────
 module.exports.login_post = async (req, res) => {
+  console.log('========== LOGIN_POST START ==========');
+  console.log('[LOGIN] Body:', {
+    email: req.body?.email || null,
+    hasPassword: !!req.body?.password
+  });
+
   const { email, password } = req.body;
 
   try {
-     const user = await User.login(email.toLowerCase(), password);
-    const token = createToken(user._id);
+    if (!email || !password) {
+      console.log('[LOGIN] FAIL – missing email or password');
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password are required'
+      });
+    }
 
-    // Still set cookie for backward compatibility
-    // res.cookie('jwt', token, { httpOnly: true, maxAge: maxAge * 1000 });
-    res.cookie('jwt', token, {
-     httpOnly: true,
-     maxAge: maxAge * 1000,
-     secure: true,
-     sameSite: 'none'
+    console.log('[LOGIN] Step 1: User.login() for:', email.toLowerCase());
+    const user = await User.login(email.toLowerCase(), password);
+    console.log('[LOGIN] Step 1 OK – user found:', {
+      _id: user._id,
+      email: user.email,
+      firstname: user.firstname,
+      isVerified: user.isVerified,
+      suspended: user.suspended
     });
 
-    let redirectUrl = 'pin.html'; // frontend page
+    console.log('[LOGIN] Step 2: Create JWT');
+    const token = createToken(user._id);
+    console.log('[LOGIN] JWT created (length):', token ? token.length : 0);
+
+    console.log('[LOGIN] Step 3: Set cookie');
+    res.cookie('jwt', token, {
+      httpOnly: true,
+      maxAge: maxAge * 1000,
+      secure: true,
+      sameSite: 'none'
+    });
+    console.log('[LOGIN] Cookie set');
+
+    let redirectUrl = 'pin.html';
     if (email.toLowerCase() === 'support@swifts-capitals.com') {
-      redirectUrl = 'adminDashboard.html'; // or whatever your admin page will be
+      redirectUrl = 'adminDashboard.html';
+      console.log('[LOGIN] Admin email detected → redirect:', redirectUrl);
+    } else {
+      console.log('[LOGIN] Normal user → redirect:', redirectUrl);
     }
+
+    console.log('[LOGIN] SUCCESS – sending 200 JSON');
+    console.log('========== LOGIN_POST END (success) ==========');
 
     return res.status(200).json({
       success: true,
       message: `Welcome back, ${user.firstname || 'User'}!`,
-      token,                    // ← important for frontend
+      token,
       user: {
         _id: user._id,
         firstname: user.firstname,
@@ -529,10 +811,13 @@ module.exports.login_post = async (req, res) => {
     });
 
   } catch (err) {
+    console.error('========== LOGIN_POST ERROR ==========');
+    console.error('[LOGIN] err.message:', err.message);
+    console.error('[LOGIN] err.stack:', err.stack);
+
     const errors = handleErrors(err);
     let errorMessage = err.message || 'Login failed. Please try again.';
 
-    // More user-friendly messages
     if (err.message === 'incorrect email') {
       errorMessage = 'Invalid email address.';
     } else if (err.message === 'incorrect password') {
@@ -543,6 +828,9 @@ module.exports.login_post = async (req, res) => {
       errorMessage = 'Your account is suspended. Contact support.';
     }
 
+    console.log('[LOGIN] Response 400:', { message: errorMessage, errors });
+    console.log('========== LOGIN_POST END (error) ==========');
+
     return res.status(400).json({
       success: false,
       message: errorMessage,
@@ -550,17 +838,26 @@ module.exports.login_post = async (req, res) => {
     });
   }
 };
-
-module.exports.forgetPasswordPage = (req, res) => { res.render("forgot-password"); };
+module.exports.forgetPasswordPage = (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: 'Use the frontend forgot-password page',
+    redirect: `${frontendUrl()}/forgot-password.html`
+  });
+};
 
 // ──────────────────────────────────────────────────────────────
 // FORGOT PASSWORD – SEND RESET LINK
 // ──────────────────────────────────────────────────────────────
 
+// ──────────────────────────────────────────────────────────────
+// FORGOT PASSWORD – SEND RESET LINK (POST)
+// Route: POST /forgot-password
+// ──────────────────────────────────────────────────────────────
 module.exports.forgetPasswordPage_post = async (req, res) => {
   const { email } = req.body;
 
-  // Always respond with JSON (for AJAX)
+  // Always respond with JSON (for AJAX / Axios)
   res.setHeader('Content-Type', 'application/json');
 
   try {
@@ -588,9 +885,10 @@ module.exports.forgetPasswordPage_post = async (req, res) => {
     user.resetPasswordExpires = resetTokenExpires;
     await user.save();
 
-    // Generate reset URL
-    const baseUrl = process.env.BASE_URL || 'http://localhost:7000';
-    const resetUrl = `${baseUrl}/reset-password/${resetToken}?email=${encodeURIComponent(email)}`;
+    const resetUrl =
+      `${frontendUrl}/reset-password.html` +
+      `?token=${encodeURIComponent(resetToken)}` +
+      `&email=${encodeURIComponent(user.email)}`;
 
     // Send email
     await sendPasswordResetEmail(user.email, user.firstname || 'User', resetUrl);
@@ -608,9 +906,13 @@ module.exports.forgetPasswordPage_post = async (req, res) => {
     });
   }
 };
-
 // ──────────────────────────────────────────────────────────────
 // RESET PASSWORD PAGE (GET)
+// ──────────────────────────────────────────────────────────────
+
+// ──────────────────────────────────────────────────────────────
+// RESET PASSWORD PAGE (GET) – JSON for static frontend
+// Route: GET /reset-password/:token?email=...
 // ──────────────────────────────────────────────────────────────
 module.exports.resetPasswordPage = async (req, res) => {
   const { token } = req.params;
@@ -631,8 +933,11 @@ module.exports.resetPasswordPage = async (req, res) => {
 
     if (!user) {
       console.log('No user found with this valid reset token → invalid/expired');
-      req.flash('error', 'Password reset link is invalid or has expired');
-      return res.redirect('/forgot-password');
+      return res.status(400).json({
+        success: false,
+        message: 'Password reset link is invalid or has expired',
+        redirect: `${frontendUrl}/forgot-password.html`
+      });
     }
 
     // Optional safety: warn if provided email doesn't match stored email
@@ -641,23 +946,75 @@ module.exports.resetPasswordPage = async (req, res) => {
         provided: email,
         stored: user.email
       });
-      // You can still proceed — or redirect with warning if you want to be strict
+      // Still proceed using the stored email (more secure)
     }
 
     console.log('Valid reset token found for user:', user.email);
 
-    res.render('reset-password', {
+    // Success – frontend opens reset-password.html with token + email
+    return res.status(200).json({
+      success: true,
+      message: 'Valid reset token',
       token,
-      email: user.email,          // ← use the stored email (more secure)
-      messages: req.flash()
+      email: user.email, // use stored email
+      redirect: `${frontendUrl}/reset-password.html?token=${encodeURIComponent(token)}&email=${encodeURIComponent(user.email)}`
     });
 
   } catch (err) {
     console.error('Reset password page error:', err.message, err.stack);
-    req.flash('error', 'Something went wrong. Please request a new link.');
-    res.redirect('/forgot-password');
+    return res.status(500).json({
+      success: false,
+      message: 'Something went wrong. Please request a new link.',
+      redirect: `${frontendUrl}/forgot-password.html`
+    });
   }
 };
+// module.exports.resetPasswordPage = async (req, res) => {
+//   const { token } = req.params;
+//   const { email } = req.query;
+
+//   console.log('Reset password GET attempt:', {
+//     token,
+//     provided_email: email,
+//     now: Date.now(),
+//   });
+
+//   try {
+//     // ─── Only check by token + expiration ───
+//     const user = await User.findOne({
+//       resetPasswordToken: token,
+//       resetPasswordExpires: { $gt: Date.now() }
+//     });
+
+//     if (!user) {
+//       console.log('No user found with this valid reset token → invalid/expired');
+//       req.flash('error', 'Password reset link is invalid or has expired');
+//       return res.redirect('/forgot-password');
+//     }
+
+//     // Optional safety: warn if provided email doesn't match stored email
+//     if (email && user.email.toLowerCase() !== email.toLowerCase().trim()) {
+//       console.warn('Email mismatch on reset link:', {
+//         provided: email,
+//         stored: user.email
+//       });
+//       // You can still proceed — or redirect with warning if you want to be strict
+//     }
+
+//     console.log('Valid reset token found for user:', user.email);
+
+//     res.render('reset-password', {
+//       token,
+//       email: user.email,          // ← use the stored email (more secure)
+//       messages: req.flash()
+//     });
+
+//   } catch (err) {
+//     console.error('Reset password page error:', err.message, err.stack);
+//     req.flash('error', 'Something went wrong. Please request a new link.');
+//     res.redirect('/forgot-password');
+//   }
+// };
 // ──────────────────────────────────────────────────────────────
 // RESET PASSWORD SUBMISSION (POST)
 // ──────────────────────────────────────────────────────────────
@@ -2980,6 +3337,16 @@ module.exports.viewloanPage = async (req, res) => {
 
 
 module.exports.logout_get = (req, res) => {
-    res.cookie('jwt', '', { maxAge: 1 });
-    res.redirect('/');
+  res.cookie('jwt', '', {
+    httpOnly: true,
+    maxAge: 1,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: 'Logged out',
+    redirect: `${frontendUrl()}/login.html`
+  });
 };
