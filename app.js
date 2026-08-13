@@ -28,6 +28,7 @@ connectDB();
 
 
 // ====================== MIDDLEWARES ======================
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -38,7 +39,6 @@ function normalizeOrigin(url) {
   if (!url) return null;
   return String(url).trim().replace(/\/$/, '');
 }
-
 const allowedOrigins = [
   normalizeOrigin(process.env.FRONTEND_URL),
   'https://teraswift-finance.netlify.app',

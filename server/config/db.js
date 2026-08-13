@@ -21,7 +21,7 @@ const connectDB = async () => {
     mongoose.set('strictQuery', false);
     
     // Temporarily put your full connection string here for testing
-    const conn = await mongoose.connect(process.env.MONGO_URI || "mongodb+srv://marcelpolocha1:081358pius@cluster0.f9a85hv.mongodb.net/switchswiftBank");
+    const conn = await mongoose.connect(process.env.MONGO_URI );
     
     console.log(`Database Connected: ${conn.connection.host}`);
   } catch (error) {

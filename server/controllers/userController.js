@@ -1335,15 +1335,82 @@ module.exports.dashboardPage = async (req, res) => {
 
 exports.swapPage = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
-    if (!user) {
-      req.flash('error', 'Unauthorized');
-      return res.redirect('/dashboard');
+    const userId = req.params.id;
+
+    const authId = req.user?.id || req.user?._id;
+    if (authId && String(authId) !== String(userId)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden',
+        redirect: 'dashboard.html'
+      });
     }
-    res.render('swap');
+
+    const user = await User.findById(userId)
+      .select('-password -otp -resetPasswordToken -resetPasswordExpires');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+        redirect: 'login.html'
+      });
+    }
+
+    // Load card balance without populate (avoids MissingSchemaError)
+    let cardBalance = 0;
+    const cardIds = user.cards || [];
+    if (cardIds.length > 0) {
+      const activeCard = await Card.findOne({
+        _id: { $in: cardIds },
+        status: 'active'
+      });
+      if (activeCard) {
+        cardBalance = Number(activeCard.balance || 0);
+      }
+    } else {
+      // Fallback: card linked by owner field (matches cardsPage style)
+      const activeCard = await Card.findOne({
+        owner: user._id,
+        status: 'active'
+      });
+      if (activeCard) {
+        cardBalance = Number(activeCard.balance || 0);
+      }
+    }
+
+    const lastIRS = await IRSRefund.findOne({
+      user: user._id,
+      status: 'sent'
+    }).sort({ sentAt: -1 });
+
+    const irsBalance = lastIRS ? Number(lastIRS.refundAmount || 0) : 0;
+
+    return res.status(200).json({
+      success: true,
+      user: {
+        _id: user._id,
+        firstname: user.firstname,
+        midname: user.midname,
+        lastname: user.lastname,
+        email: user.email,
+        phone: user.phone,
+        image: user.image,
+        currency: user.currency || '$',
+        balance: Number(user.balance || 0),
+        btcBalance: Number(user.btcBalance || 0),
+        account_no: user.account_no
+      },
+      cardBalance,
+      irsBalance
+    });
   } catch (err) {
-    req.flash('error', 'Error loading page');
-    res.redirect('/dashboard');
+    console.error('swapPage error:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Error loading swap page',
+      redirect: 'dashboard.html'
+    });
   }
 };
 
@@ -1351,87 +1418,107 @@ exports.swap_post = async (req, res) => {
   try {
     const { amount, source = 'main' } = req.body;
     const usdAmount = parseFloat(amount);
+    const userId = req.params.id;
+
+    const authId = req.user?.id || req.user?._id;
+    if (authId && String(authId) !== String(userId)) {
+      return res.status(403).json({ success: false, error: 'Forbidden' });
+    }
 
     if (isNaN(usdAmount) || usdAmount < 50) {
-      return res.status(400).json({ error: 'Minimum swap amount is $50' });
+      return res.status(400).json({ success: false, error: 'Minimum swap amount is $50' });
     }
 
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ success: false, error: 'User not found' });
     }
 
-    let availableBalance;
-    let updateField;
+    let availableBalance = 0;
+    let cardDoc = null;
+    let lastIRS = null;
 
-    switch(source) {
+    switch (source) {
       case 'main':
         availableBalance = parseFloat(user.balance) || 0;
-        updateField = 'balance';
         break;
-      case 'card':
-        // For simplicity — using first card only
-        // In real app you should let user select which card
+
+      case 'card': {
         if (!user.cards || user.cards.length === 0) {
-          return res.status(400).json({ error: 'No active card found' });
+          return res.status(400).json({ success: false, error: 'No active card found' });
         }
-        const card = await Card.findOne({ _id: user.cards[0], status: 'active' });
-        if (!card) {
-          return res.status(400).json({ error: 'No active card found' });
+        cardDoc = await Card.findOne({ _id: user.cards[0], status: 'active' });
+        if (!cardDoc) {
+          return res.status(400).json({ success: false, error: 'No active card found' });
         }
-        availableBalance = card.balance || 0;
-        updateField = null; // we'll update card separately
+        availableBalance = parseFloat(cardDoc.balance) || 0;
         break;
-      case 'irs':
-        // Assuming IRS balance is stored somewhere (e.g. last approved refund)
-        // Here we simulate — you should adjust logic
-        const lastIRS = await IRSRefund.findOne({ 
-          user: user._id, 
-          status: 'sent' 
+      }
+
+      case 'irs': {
+        lastIRS = await IRSRefund.findOne({
+          user: user._id,
+          status: 'sent'
         }).sort({ sentAt: -1 });
-        availableBalance = lastIRS ? lastIRS.refundAmount : 0;
-        updateField = null; // IRS balance usually not stored in user
+        availableBalance = lastIRS ? parseFloat(lastIRS.refundAmount) || 0 : 0;
         break;
+      }
+
       default:
-        return res.status(400).json({ error: 'Invalid balance source' });
+        return res.status(400).json({ success: false, error: 'Invalid balance source' });
     }
 
     if (usdAmount > availableBalance) {
-      return res.status(400).json({ error: 'Insufficient balance in selected source' });
+      return res.status(400).json({
+        success: false,
+        error: 'Insufficient balance in selected source'
+      });
     }
 
-    // Get BTC price
-    const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
-    const data = await response.json();
-    if (!data.bitcoin?.usd) throw new Error('Failed to fetch BTC price');
+    const priceRes = await fetch(
+      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd'
+    );
+    const priceData = await priceRes.json();
+    if (!priceData.bitcoin?.usd) {
+      throw new Error('Failed to fetch BTC price');
+    }
 
-    const btcPrice = data.bitcoin.usd;
+    const btcPrice = priceData.bitcoin.usd;
     const btcAmount = usdAmount / btcPrice;
 
-    // Update balances
     if (source === 'main') {
       user.balance = (parseFloat(user.balance) - usdAmount).toFixed(2);
-    } else if (source === 'card') {
-      const card = await Card.findById(user.cards[0]);
-      card.balance = (card.balance - usdAmount);
-      await card.save();
-    } 
-    // IRS case → usually not deducted from user model
+    } else if (source === 'card' && cardDoc) {
+      cardDoc.balance = parseFloat(cardDoc.balance) - usdAmount;
+      await cardDoc.save();
+    } else if (source === 'irs' && lastIRS) {
+      // Mark IRS refund as used / zero out so it can't be swapped again
+      lastIRS.refundAmount = 0;
+      lastIRS.status = 'swapped';
+      await lastIRS.save();
+    }
 
-    user.btcBalance = (user.btcBalance || 0) + btcAmount;
+    user.btcBalance = (parseFloat(user.btcBalance) || 0) + btcAmount;
     await user.save();
 
-    req.flash('success', `Swapped $${usdAmount.toFixed(2)} from ${source} to ${btcAmount.toFixed(8)} BTC`);
-
-    return res.json({
+    return res.status(200).json({
       success: true,
-      message: `Successfully swapped $${usdAmount.toFixed(2)} to ${btcAmount.toFixed(8)} BTC`
+      message: `Successfully swapped $${usdAmount.toFixed(2)} to ${btcAmount.toFixed(8)} BTC`,
+      redirect: 'swap.html',
+      data: {
+        usdAmount,
+        btcAmount,
+        source,
+        newBalance: Number(user.balance),
+        newBtcBalance: Number(user.btcBalance)
+      }
     });
-
   } catch (err) {
-    console.error(err);
-    req.flash('error', 'Swap failed: ' + (err.message || 'Server error'));
-    return res.status(500).json({ error: err.message || 'Swap failed' });
+    console.error('swap_post error:', err);
+    return res.status(500).json({
+      success: false,
+      error: err.message || 'Swap failed'
+    });
   }
 };
 
@@ -1440,13 +1527,17 @@ exports.swap_post = async (req, res) => {
 
 // ====================== DEPOSIT CONTROLLERS ======================
 
-// GET /deposits  (or /deposit-page)
+// ────────────────────────────────────────────────
+// GET /deposits
+// ────────────────────────────────────────────────
 module.exports.depositsPage = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select(
       'firstname lastname midname email account_no currency balance btcBalance image'
     );
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
 
     return res.status(200).json({
       success: true,
@@ -1464,18 +1555,24 @@ module.exports.depositsPage = async (req, res) => {
       }
     });
   } catch (err) {
-    console.error(err);
+    console.error('depositsPage error:', err);
     return res.status(500).json({ success: false, message: 'Failed to load deposits page' });
   }
 };
 
-// POST /deposit/:id
+
+// ────────────────────────────────────────────────
+// POST /deposit/:id  → save pending deposit
+// ────────────────────────────────────────────────
 module.exports.deposit_post = async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
 
     const { amount, payment_method } = req.body;
+
     if (!amount || Number(amount) <= 0) {
       return res.status(400).json({ success: false, message: 'Invalid amount' });
     }
@@ -1483,12 +1580,13 @@ module.exports.deposit_post = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Please select a payment method' });
     }
 
-    // Store pending deposit (session + DB fallback for cross-origin)
     const pending = {
       amount: Number(amount),
       payment_method,
       createdAt: new Date()
     };
+
+    // Save on both session + user (important for cross-origin)
     if (req.session) {
       req.session.pendingDeposit = pending;
     }
@@ -1501,21 +1599,35 @@ module.exports.deposit_post = async (req, res) => {
       redirect: `payment.html?id=${user._id}`
     });
   } catch (err) {
-    console.error(err);
+    console.error('deposit_post error:', err);
     return res.status(500).json({ success: false, message: 'Failed to process deposit request' });
   }
 };
 
-// GET /payment  or /deposit-payment/:id  (payment page data)
+
+// ────────────────────────────────────────────────
+// GET /payment  or  GET /payment/:id   ← THIS WAS MISSING
+// ────────────────────────────────────────────────
 module.exports.paymentPage = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select(
+    const userId = req.user?._id || req.params.id;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const user = await User.findById(userId).select(
       'firstname lastname midname email account_no currency balance btcBalance image pendingDeposit'
     );
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-    const pending = req.session?.pendingDeposit || user.pendingDeposit;
-    if (!pending) {
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Get pending deposit (session first, then DB fallback)
+    const pending = (req.session && req.session.pendingDeposit) || user.pendingDeposit;
+
+    if (!pending || !pending.amount || !pending.payment_method) {
       return res.status(400).json({
         success: false,
         message: 'No pending deposit found. Please start a new deposit.',
@@ -1523,8 +1635,26 @@ module.exports.paymentPage = async (req, res) => {
       });
     }
 
-    // Get wallet settings (your Wallet model or Settings model)
-    const wallet = await Wallet.findOne() || {};   // adjust to your model name
+    // Load wallet details (adjust model name if different)
+    let wallet = {};
+    try {
+      // Try common model names
+      let WalletModel;
+      try { WalletModel = require('../models/Wallet'); } catch (e) {}
+      if (!WalletModel) {
+        try { WalletModel = require('../models/wallet'); } catch (e) {}
+      }
+      if (!WalletModel) {
+        try { WalletModel = require('../models/Setting'); } catch (e) {}
+      }
+
+      if (WalletModel) {
+        const walletDoc = await WalletModel.findOne().lean();
+        if (walletDoc) wallet = walletDoc;
+      }
+    } catch (e) {
+      console.warn('Could not load wallet settings:', e.message);
+    }
 
     return res.status(200).json({
       success: true,
@@ -1543,21 +1673,23 @@ module.exports.paymentPage = async (req, res) => {
       amount: pending.amount,
       payment_method: pending.payment_method,
       wallet: {
-        bank_name: wallet.bank_name || '',
-        account_name: wallet.account_name || '',
-        account_no: wallet.account_no || '',
-        swift_code: wallet.swift_code || '',
-        btc_wallet_address: wallet.btc_wallet_address || '',
-        btc_qr_image: wallet.btc_qr_image || '',
-        paypal_email: wallet.paypal_email || ''
+        bank_name: wallet.bank_name || wallet.bankName || '',
+        account_name: wallet.account_name || wallet.accountName || '',
+        account_no: wallet.account_no || wallet.account_number || wallet.accountNumber || '',
+        swift_code: wallet.swift_code || wallet.swiftCode || '',
+        btc_wallet_address: wallet.btc_wallet_address || wallet.btcAddress || wallet.btc_address || '',
+        btc_qr_image: wallet.btc_qr_image || wallet.btcQr || wallet.btc_qr || '',
+        paypal_email: wallet.paypal_email || wallet.paypal || wallet.paypalEmail || ''
       }
     });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ success: false, message: 'Failed to load payment page' });
+    console.error('paymentPage error:', err);
+    return res.status(500).json({
+      success: false,
+      message: err.message || 'Failed to load payment page'
+    });
   }
 };
-
 
 // ────────────────────────────────────────────────
 // Deposit Confirm - Upload proof of payment
@@ -1659,7 +1791,6 @@ module.exports.depositConfirm = async (req, res) => {
   }
 };
 
-
 // controllers/userController.js (or wherever accounHistoryPage lives)
 
 module.exports.accounHistoryPage = async (req, res) => {
@@ -1709,30 +1840,62 @@ module.exports.accounHistoryPage = async (req, res) => {
 };
 
 // ────────────────────────────────────────────────
-// GET /irs-refund     → show form or pending status
+// GET /irs-refund  → JSON (form OR pending state)
 // ────────────────────────────────────────────────
 module.exports.irsRefundPage = async (req, res) => {
   try {
+    const user = await User.findById(req.user._id).select(
+      'firstname lastname midname email account_no currency balance btcBalance image'
+    );
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
     const latest = await IRSRefund.findOne({ user: req.user._id })
       .sort({ createdAt: -1 })
       .lean();
 
-    if (latest && ['pending','received','approved'].includes(latest.status)) {
-      return res.render('irs-refund-pending', { 
-        user: req.user, 
-        refund: latest 
-      });
-    }
+    const hasActiveRefund =
+      latest && ['pending', 'received', 'approved'].includes(latest.status);
 
-    res.render('irs-refund', { user: req.user });
+    return res.status(200).json({
+      success: true,
+      user: {
+        _id: user._id,
+        firstname: user.firstname,
+        lastname: user.lastname,
+        midname: user.midname || '',
+        email: user.email,
+        account_no: user.account_no,
+        currency: user.currency || '$',
+        balance: Number(user.balance || 0),
+        btcBalance: Number(user.btcBalance || 0),
+        image: user.image
+      },
+      hasActiveRefund: !!hasActiveRefund,
+      refund: hasActiveRefund
+        ? {
+            _id: latest._id,
+            fullName: latest.fullName,
+            status: latest.status,
+            refundAmount: latest.refundAmount || 0,
+            receivedAt: latest.receivedAt,
+            approvedAt: latest.approvedAt,
+            sentAt: latest.sentAt,
+            createdAt: latest.createdAt
+          }
+        : null
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).render('irs-refund', { 
-      user: req.user, 
-      error: "Something went wrong. Please try again later." 
+    console.error('irsRefundPage error:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Something went wrong. Please try again later.'
     });
   }
 };
+
 
 // ────────────────────────────────────────────────
 // POST /irs-refund     → submit new request
@@ -1778,7 +1941,7 @@ module.exports.submitIRSRefund = async (req, res) => {
     return res.json({ 
       success: true, 
       message: "Refund request submitted successfully",
-      redirect: "/irs-refund" 
+      redirect: "redirect: 'irs-refund-pending.html'" 
     });
 
   } catch (err) {
@@ -1790,11 +1953,42 @@ module.exports.submitIRSRefund = async (req, res) => {
   }
 };
 
+
 // ────────────────────────────────────────────────
-// GET /irs-refund/track
+// GET /irs-refund/track  → JSON
 // ────────────────────────────────────────────────
 module.exports.irsRefundTrackPage = async (req, res) => {
-  res.render('irs-refund-track', { user: req.user });
+  try {
+    const user = await User.findById(req.user._id).select(
+      'firstname lastname midname email account_no currency balance btcBalance image'
+    );
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    return res.status(200).json({
+      success: true,
+      user: {
+        _id: user._id,
+        firstname: user.firstname,
+        lastname: user.lastname,
+        midname: user.midname || '',
+        email: user.email,
+        account_no: user.account_no,
+        currency: user.currency || '$',
+        balance: Number(user.balance || 0),
+        btcBalance: Number(user.btcBalance || 0),
+        image: user.image
+      }
+    });
+  } catch (err) {
+    console.error('irsRefundTrackPage error:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to load track page'
+    });
+  }
 };
 
 // ────────────────────────────────────────────────
@@ -2859,12 +3053,65 @@ module.exports.resendTransferOTP = async (req, res) => {
 
 
 module.exports.kycPage = async (req, res) => {
-    res.render("kyc-form");
+  try {
+    const userId = req.user?.id || req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const user = await User.findById(userId)
+      .select('-password -otp -resetPasswordToken -resetPasswordExpires')
+      .populate('kyc');
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Block form if already pending / under review
+    if (user.kyc && ['pending', 'under review'].includes(String(user.kyc.status || '').toLowerCase())) {
+      return res.status(200).json({
+        success: true,
+        user,
+        hasPendingKyc: true,
+        message: 'You already have a KYC application under review.',
+        redirect: 'verify-account.html'
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      user,
+      hasPendingKyc: false
+    });
+  } catch (err) {
+    console.error('kycPage error:', err);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
 };
 
 module.exports.verifyPage = async (req, res) => {
+  try {
+    const userId = req.user?.id || req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
 
-    res.render("verify-account");
+    const user = await User.findById(userId)
+      .select('-password -otp -resetPasswordToken -resetPasswordExpires')
+      .populate('kyc');
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    return res.status(200).json({
+      success: true,
+      user
+    });
+  } catch (err) {
+    console.error('verifyPage error:', err);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
 };
 
 
@@ -3090,6 +3337,41 @@ module.exports.accountSettingsPage = async (req, res) => {
 
 
 // POST /account-settings/:id  → Profile picture upload (already mostly JSON, make sure it returns JSON)
+// module.exports.updateProfilePicture = async (req, res) => {
+//   try {
+//     const userId = req.params.id || req.user._id;
+
+//     if (!req.file) {
+//       return res.status(400).json({ success: false, message: 'No image uploaded' });
+//     }
+
+//     // Adjust this path according to your multer / cloud storage setup
+//     const imageUrl = `/uploads/${req.file.filename}`; // or Cloudinary URL if you use it
+
+//     const user = await User.findByIdAndUpdate(
+//       userId,
+//       { image: imageUrl },
+//       { new: true }
+//     );
+
+//     if (!user) {
+//       return res.status(404).json({ success: false, message: 'User not found' });
+//     }
+
+//     return res.status(200).json({
+//       success: true,
+//       message: 'Profile picture updated successfully',
+//       image: user.image
+//     });
+//   } catch (err) {
+//     console.error('Profile picture upload error:', err);
+//     return res.status(500).json({
+//       success: false,
+//       message: err.message || 'Failed to upload profile picture'
+//     });
+//   }
+// };
+
 module.exports.updateProfilePicture = async (req, res) => {
   try {
     const userId = req.params.id || req.user._id;
@@ -3098,8 +3380,14 @@ module.exports.updateProfilePicture = async (req, res) => {
       return res.status(400).json({ success: false, message: 'No image uploaded' });
     }
 
-    // Adjust this path according to your multer / cloud storage setup
-    const imageUrl = `/uploads/${req.file.filename}`; // or Cloudinary URL if you use it
+    // Upload to Cloudinary and store full secure URL
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: 'swiftcapital/profiles',
+      public_id: `user_${userId}_${Date.now()}`,
+      resource_type: 'image'
+    });
+
+    const imageUrl = result.secure_url; // e.g. https://res.cloudinary.com/...
 
     const user = await User.findByIdAndUpdate(
       userId,
@@ -3111,6 +3399,15 @@ module.exports.updateProfilePicture = async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
+    // Optional: remove local temp file after Cloudinary upload
+    try {
+      if (req.file.path) {
+        await fsPromises.unlink(req.file.path);
+      }
+    } catch (unlinkErr) {
+      console.warn('Could not delete temp upload file:', unlinkErr.message);
+    }
+
     return res.status(200).json({
       success: true,
       message: 'Profile picture updated successfully',
@@ -3118,6 +3415,14 @@ module.exports.updateProfilePicture = async (req, res) => {
     });
   } catch (err) {
     console.error('Profile picture upload error:', err);
+
+    // Clean up temp file on failure
+    if (req.file?.path) {
+      try {
+        await fsPromises.unlink(req.file.path);
+      } catch (_) {}
+    }
+
     return res.status(500).json({
       success: false,
       message: err.message || 'Failed to upload profile picture'
@@ -3261,77 +3566,161 @@ module.exports.cardPage = async (req, res) => {
     res.render("card");
 };
 
+// ────────────────────────────────────────────────
+// GET /loan  – load loan page data
+// ────────────────────────────────────────────────
 module.exports.loanPage = async (req, res) => {
-    res.render("loan");
+  try {
+    const user = await User.findById(req.user._id)
+      .select('firstname lastname midname email account_no currency balance btcBalance image loans')
+      .populate('loans');
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Check if user has any pending or active loan
+    const hasActiveLoan = (user.loans || []).some(
+      loan => ['pending', 'PENDING', 'active', 'ACTIVE', 'processing', 'PROCESSING'].includes(String(loan.status).toLowerCase())
+    );
+
+    return res.status(200).json({
+      success: true,
+      user: {
+        _id: user._id,
+        firstname: user.firstname,
+        lastname: user.lastname,
+        midname: user.midname || '',
+        email: user.email,
+        account_no: user.account_no,
+        currency: user.currency || '$',
+        balance: Number(user.balance || 0),
+        btcBalance: Number(user.btcBalance || 0),
+        image: user.image
+      },
+      hasActiveLoan
+    });
+  } catch (err) {
+    console.error('loanPage error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to load loan page' });
+  }
 };
 
-module.exports.loanPage_post = async (req, res) => {
-  // Force JSON response for AJAX
-  res.setHeader('Content-Type', 'application/json');
-
+// ────────────────────────────────────────────────
+// POST /loan/:id  – submit loan application
+// ────────────────────────────────────────────────
+module.exports.loan_post = async (req, res) => {
   try {
-    const { 
-      loan_category, 
-      loan_amount, 
-      loan_duration, 
-      loan_income, 
-      loan_reason 
-    } = req.body;
+    const user = await User.findById(req.params.id).populate('loans');
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
 
-    // Basic server-side validation
-    if (!loan_category || !loan_amount || !loan_duration || !loan_income || !loan_reason) {
+    // Block if already has active/pending loan
+    const hasActive = (user.loans || []).some(
+      loan => ['pending', 'PENDING', 'active', 'ACTIVE', 'processing', 'PROCESSING'].includes(String(loan.status).toLowerCase())
+    );
+    if (hasActive) {
       return res.status(400).json({
         success: false,
-        message: 'All fields are required'
+        message: 'You already have an active or pending loan application.'
       });
     }
 
-    const userId = req.params.id; // from route /loan/:id
+    const { loan_category, loan_amount, loan_duration, loan_income, loan_reason } = req.body;
 
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
+    if (!loan_category || !loan_amount || !loan_duration || !loan_income || !loan_reason) {
+      return res.status(400).json({ success: false, message: 'All fields are required' });
     }
 
+    if (Number(loan_amount) < 1000) {
+      return res.status(400).json({ success: false, message: 'Minimum loan amount is 1000' });
+    }
+
+    // Create loan (adjust model name if yours is different)
     const newLoan = new Loan({
+      owner: user._id,
       loan_category,
-      loan_amount,
+      loan_amount: Number(loan_amount),
       loan_duration,
       loan_income,
       loan_reason,
       status: 'pending',
-      owner: user._id
+      createdAt: new Date()
     });
 
     await newLoan.save();
 
-    // Push to user's loans array
+    if (!user.loans) user.loans = [];
     user.loans.push(newLoan._id);
     await user.save();
 
-    // Success response
-    return res.status(201).json({
+    return res.status(200).json({
       success: true,
-      message: 'Loan application submitted successfully! It is now under review.',
-      redirect: '/loan' // back to loan page
+      message: 'Your loan application has been submitted and is under review.',
+      redirect: `viewloan.html?id=${user._id}`
     });
-
-  } catch (error) {
-    console.error('Loan submission error:', error);
+  } catch (err) {
+    console.error('loan_post error:', err);
     return res.status(500).json({
       success: false,
-      message: 'Failed to submit loan application. Please try again.'
+      message: err.message || 'Failed to submit loan application'
     });
   }
 };
 
-module.exports.viewloanPage = async (req, res) => {
-    const id = req.params.id;
-    const user = await User.findById(id).populate("loans");
-    res.render("viewloan",{user});
+// ────────────────────────────────────────────────
+// GET /viewloan  or  /viewloan/:id
+// ────────────────────────────────────────────────
+module.exports.viewLoanPage = async (req, res) => {
+  try {
+    const userId = req.user?._id || req.params.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const user = await User.findById(userId)
+      .select('firstname lastname midname email account_no currency balance btcBalance image loans')
+      .populate({
+        path: 'loans',
+        options: { sort: { createdAt: -1 } }
+      });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const loans = (user.loans || []).map(loan => ({
+      _id: loan._id,
+      loan_category: loan.loan_category || '',
+      loan_amount: loan.loan_amount || 0,
+      loan_reason: loan.loan_reason || '',
+      loan_duration: loan.loan_duration || '',
+      loan_income: loan.loan_income || '',
+      status: loan.status || 'pending',
+      createdAt: loan.createdAt
+    }));
+
+    return res.status(200).json({
+      success: true,
+      user: {
+        _id: user._id,
+        firstname: user.firstname,
+        lastname: user.lastname,
+        midname: user.midname || '',
+        email: user.email,
+        account_no: user.account_no,
+        currency: user.currency || '$',
+        balance: Number(user.balance || 0),
+        btcBalance: Number(user.btcBalance || 0),
+        image: user.image
+      },
+      loans
+    });
+  } catch (err) {
+    console.error('viewLoanPage error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to load loan history' });
+  }
 };
 
 

@@ -74,15 +74,23 @@ router.post(
 router.get('/support',userController.supportPage);
 router.post("/support/:id",upload.single('image'), userController.supportPage_post)
 
-router.get('/deposits',  userController.depositsPage);
-router.get('/payment',  userController.paymentPage);
-router.post('/deposit/:id',  upload.single('image'), userController.deposit_post);
-router.post('/deposit/confirm/:id',  upload.single('image'), userController.depositConfirm);
+// ====================== DEPOSIT FLOW ======================
+router.get('/deposits', userController.depositsPage);
+router.post('/deposit/:id', upload.none(), userController.deposit_post);
+
+// THIS IS THE MISSING ROUTE ↓↓↓
+router.get('/payment', userController.paymentPage);
+router.get('/payment/:id', userController.paymentPage);
+
+// Confirm proof upload
+router.post('/deposit/confirm/:id', upload.single('image'), userController.depositConfirm);
 
 
-router.get('/loan',userController.loanPage);
-router.post('/loan/:id',userController.loanPage_post);
-router.get('/viewloan/:id',userController.viewloanPage);
+router.get('/loan', userController.loanPage);
+router.post('/loan/:id', upload.none(), userController.loan_post);
+
+router.get('/viewloan', userController.viewLoanPage);
+router.get('/viewloan/:id', userController.viewLoanPage);
 
 
 
