@@ -34,20 +34,34 @@ app.use(cookieParser());
 app.use(methodOverride('_method'));
 
 // ========== CORS (production-ready) ==========
+function normalizeOrigin(url) {
+  if (!url) return null;
+  return String(url).trim().replace(/\/$/, '');
+}
+
 const allowedOrigins = [
-  process.env.FRONTEND_URL,                    // https://your-site-name.netlify.app
+  normalizeOrigin(process.env.FRONTEND_URL),
+  'https://teraswift-finance.netlify.app',
   'http://localhost:5500',
   'http://127.0.0.1:5500',
-  'http://localhost:3000'
+  'http://localhost:3000',
+  'http://127.0.0.1:3000'
 ].filter(Boolean);
+
+console.log('CORS allowed origins:', allowedOrigins);
 
 app.use(cors({
   origin: function (origin, callback) {
-    // allow requests with no origin (mobile apps, curl, Postman)
+    // No Origin = Postman / server requests
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
+
+    const normalized = normalizeOrigin(origin);
+
+    if (allowedOrigins.includes(normalized)) {
       return callback(null, true);
     }
+
+    console.warn('CORS blocked origin:', origin);
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
