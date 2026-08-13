@@ -3229,8 +3229,12 @@ module.exports.verifyPage_post = async (req, res) => {
 };
 
 
-module.exports.supportPage = async (req, res) => {
-    res.render("support");
+module.exports.supportPage = (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: 'Use the frontend about page',
+    redirect: `${frontendUrl()}/support.html`
+  });
 };
 
 module.exports.supportPage_post = async (req, res) => {
