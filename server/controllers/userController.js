@@ -2154,7 +2154,11 @@ module.exports.cardsPage = async (req, res) => {
 };
 
 module.exports.applyCardPage = async (req, res) => {
-        res.render('apply');
+         return res.status(200).json({
+    success: true,
+    message: 'Use the frontend apply-card page',
+    redirect: `${frontendUrl()}/apply.html`
+  });
  
 };
 
@@ -3567,7 +3571,11 @@ module.exports.changePin = async (req, res) => {
 
 
 module.exports.cardPage = async (req, res) => {
-    res.render("card");
+         return res.status(200).json({
+    success: true,
+    message: 'Use the frontend apply-card page',
+    redirect: `${frontendUrl()}/card.html`
+  });
 };
 
 // ────────────────────────────────────────────────
