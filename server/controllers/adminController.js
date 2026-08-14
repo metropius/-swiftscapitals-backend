@@ -109,15 +109,21 @@ module.exports.adminPage = async (req, res) => {
     const total = await User.countDocuments(query);
     const totalPages = Math.ceil(total / perPage);
 
-    res.render('adminDashboard', {
-      users,
-      page,
-      totalPages,
-      sort,
-      order,
-      status
-      // No more flash messages here — we don't need success/error query params anymore
-    });
+   return res.status(200).json({
+  success: true,
+  user: {
+    _id: req.user._id,
+    firstname: req.user.firstname,
+    midname: req.user.midname,
+    lastname: req.user.lastname,
+    email: req.user.email,
+    image: req.user.image
+  },
+  users,          // paginated list
+  page: Number(page),
+  totalPages,
+  status: status || 'all'
+});
   } catch (err) {
     console.error(err);
     res.render('adminDashboard', {
