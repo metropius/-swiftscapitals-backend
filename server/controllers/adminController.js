@@ -408,36 +408,47 @@ module.exports.unsuspendOTP = async (req, res) => {
 // *******************ALL DEPOSITS CONTROLLERS *************************//
 
 module.exports.allDeposit = async (req, res) => {
-  let perPage = 50;
-  let page = parseInt(req.query.page) || 1;
+  const perPage = 50;
+  const page = parseInt(req.query.page, 10) || 1;
 
   try {
     const query = {};
     const total = await Deposit.countDocuments(query);
-    const totalPages = Math.ceil(total / perPage);
+    const totalPages = Math.ceil(total / perPage) || 1;
 
     const deposits = await Deposit.find(query)
-      .populate('owner', 'firstname lastname email') // populate owner info
+      .populate('owner', 'firstname lastname email')
       .sort({ createdAt: -1 })
       .skip(perPage * (page - 1))
       .limit(perPage)
       .lean();
 
-    res.render('allFunding', {
-      deposits,           // changed from 'deposit' to 'deposits' for clarity
+    return res.status(200).json({
+      success: true,
+      admin: req.user
+        ? {
+            _id: req.user._id,
+            firstname: req.user.firstname,
+            midname: req.user.midname,
+            lastname: req.user.lastname,
+            email: req.user.email,
+            image: req.user.image
+          }
+        : null,
+      deposits,
       page,
       totalPages,
       perPage
     });
-
   } catch (error) {
     console.error(error);
-    res.render('allFunding', {
+    return res.status(500).json({
+      success: false,
+      message: 'Could not load deposits',
       deposits: [],
       page: 1,
       totalPages: 1,
-      perPage,
-      error: 'Could not load deposits'
+      perPage
     });
   }
 };
@@ -449,26 +460,66 @@ module.exports.viewDeposit = async (req, res) => {
       .lean();
 
     if (!deposit) {
-      return res.status(404).json({ success: false, message: 'Deposit not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Deposit not found'
+      });
     }
 
-    res.render('viewDeposit', { deposit });
+    return res.status(200).json({
+      success: true,
+      deposit,
+      admin: req.user
+        ? {
+            _id: req.user._id,
+            firstname: req.user.firstname,
+            midname: req.user.midname,
+            lastname: req.user.lastname,
+            email: req.user.email,
+            image: req.user.image
+          }
+        : null
+    });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    console.error('viewDeposit error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
   }
 };
 
 module.exports.editDeposit = async (req, res) => {
   try {
     const deposit = await Deposit.findById(req.params.id).lean();
+
     if (!deposit) {
-      return res.status(404).json({ success: false, message: 'Deposit not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Deposit not found'
+      });
     }
-    res.render('editDeposit', { deposit });
+
+    return res.status(200).json({
+      success: true,
+      deposit,
+      admin: req.user
+        ? {
+            _id: req.user._id,
+            firstname: req.user.firstname,
+            midname: req.user.midname,
+            lastname: req.user.lastname,
+            email: req.user.email,
+            image: req.user.image
+          }
+        : null
+    });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    console.error('editDeposit error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
   }
 };
 
@@ -659,75 +710,135 @@ module.exports.deleteLoan = async (req, res) => {
 // ******************************** TRANSFER CONTROLLERS *********************************//
 
 module.exports.allTransfer = async (req, res) => {
-  let perPage = 50;
-  let page = parseInt(req.query.page) || 1;
+  const perPage = 50;
+  const page = parseInt(req.query.page, 10) || 1;
 
   try {
     const query = {};
-
     const total = await transferMoney.countDocuments(query);
-    const totalPages = Math.ceil(total / perPage);
+    const totalPages = Math.ceil(total / perPage) || 1;
 
-    const transfers = await transferMoney.find(query)
+    const transfers = await transferMoney
+      .find(query)
       .populate('owner', 'firstname lastname email phone country')
       .sort({ createdAt: -1 })
       .skip(perPage * (page - 1))
       .limit(perPage)
       .lean();
 
-    // Ensure transferFrom always has a value
-    transfers.forEach(t => {
+    transfers.forEach((t) => {
       if (!t.transferFrom) t.transferFrom = 'usd';
     });
 
-    res.render('allTransfer', {
+    return res.status(200).json({
+      success: true,
+      admin: req.user
+        ? {
+            _id: req.user._id,
+            firstname: req.user.firstname,
+            midname: req.user.midname,
+            lastname: req.user.lastname,
+            email: req.user.email,
+            image: req.user.image
+          }
+        : null,
       transfers,
       page,
       totalPages,
       perPage
     });
-
   } catch (error) {
     console.error('All Transfer Error:', error);
-    res.render('allTransfer', {
+    return res.status(500).json({
+      success: false,
+      message: 'Could not load transfers',
       transfers: [],
       page: 1,
       totalPages: 1,
-      perPage,
-      error: 'Could not load transfers'
+      perPage
     });
   }
 };
 
 module.exports.viewTransfer = async (req, res) => {
   try {
-    const transfer = await transferMoney.findById(req.params.id)
+    const transfer = await transferMoney
+      .findById(req.params.id)
       .populate('owner', 'firstname lastname email phone country')
       .lean();
 
     if (!transfer) {
-      return res.status(404).json({ success: false, message: 'Transfer not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Transfer not found'
+      });
     }
 
-    res.render('viewTransfer', { transfer });
+    if (!transfer.transferFrom) {
+      transfer.transferFrom = 'usd';
+    }
+
+    return res.status(200).json({
+      success: true,
+      transfer,
+      admin: req.user
+        ? {
+            _id: req.user._id,
+            firstname: req.user.firstname,
+            midname: req.user.midname,
+            lastname: req.user.lastname,
+            email: req.user.email,
+            image: req.user.image
+          }
+        : null
+    });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    console.error('viewTransfer error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
   }
 };
 
 module.exports.editTransfer = async (req, res) => {
   try {
     const transfer = await transferMoney.findById(req.params.id).lean();
+
     if (!transfer) {
-      return res.status(404).json({ success: false, message: 'Transfer not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Transfer not found'
+      });
     }
-    res.render('editTransfer', { transfer });
+
+    if (!transfer.transferFrom) {
+      transfer.transferFrom = 'usd';
+    }
+
+    return res.status(200).json({
+      success: true,
+      transfer,
+      admin: req.user
+        ? {
+            _id: req.user._id,
+            firstname: req.user.firstname,
+            midname: req.user.midname,
+            lastname: req.user.lastname,
+            email: req.user.email,
+            image: req.user.image
+          }
+        : null
+    });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    console.error('editTransfer error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
   }
 };
+
 
 module.exports.editTransfer_post = async (req, res) => {
   try {
