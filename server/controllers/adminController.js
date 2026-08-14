@@ -188,19 +188,53 @@ module.exports.viewUser = async (req, res) => {
   }
 };
 
-module.exports.editUser = async (req, res) => {
+module.exports.editUserPage = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).lean();
+    const user = await User.findById(req.params.id).select(
+      'firstname lastname phone country address balance limit currency otpSuspended email image midname'
+    );
+
     if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
     }
-    res.render('editUser', { user });
+
+    return res.status(200).json({
+      success: true,
+      user: {
+        _id: user._id,
+        firstname: user.firstname,
+        lastname: user.lastname,
+        phone: user.phone,
+        country: user.country,
+        address: user.address,
+        balance: user.balance,
+        limit: user.limit,
+        currency: user.currency || '$',
+        otpSuspended: !!user.otpSuspended,
+        email: user.email,
+        image: user.image,
+        midname: user.midname
+      },
+      admin: {
+        _id: req.user._id,
+        firstname: req.user.firstname,
+        midname: req.user.midname,
+        lastname: req.user.lastname,
+        email: req.user.email,
+        image: req.user.image
+      }
+    });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    console.error('editUserPage error:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to load user for edit'
+    });
   }
 };
-
 module.exports.editUser_post = async (req, res) => {
   try {
     const allowedFields = [
@@ -227,11 +261,29 @@ module.exports.editUser_post = async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    return res.status(200).json({
-      success: true,
-      message: 'User updated successfully',
-      user: user.toObject() // optional: return updated user data
-    });
+   return res.status(200).json({
+  success: true,
+  user: {
+    _id: user._id,
+    firstname: user.firstname,
+    lastname: user.lastname,
+    phone: user.phone,
+    country: user.country,
+    address: user.address,
+    balance: user.balance,
+    limit: user.limit,
+    currency: user.currency || '$',
+    otpSuspended: !!user.otpSuspended
+  },
+  admin: {
+    _id: req.user._id,
+    firstname: req.user.firstname,
+    midname: req.user.midname,
+    lastname: req.user.lastname,
+    email: req.user.email,
+    image: req.user.image
+  }
+});
 
   } catch (err) {
     console.error(err);
