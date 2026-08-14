@@ -28,7 +28,7 @@ router.get('/adminiRoute',adminController.adminPage );
 
 router.get('/viewUser/:id',adminController.viewUser );
 
-router.get('/editUser/:id',adminController.editUser );
+router.get('/editUser/:id',adminController.editUserPage );
 
 router.put('/editUser/:id', adminController.editUser_post);
 
