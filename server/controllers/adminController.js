@@ -144,7 +144,44 @@ module.exports.viewUser = async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
-    res.render('viewUser', { user });
+    return res.status(200).json({
+  success: true,
+  user: {
+    _id: user._id,
+    firstname: user.firstname,
+    midname: user.midname,
+    lastname: user.lastname,
+    email: user.email,
+    phone: user.phone,
+    gender: user.gender,
+    Dob: user.Dob,
+    account_no: user.account_no,
+    accounttype: user.accounttype,
+    currency: user.currency,
+    balance: user.balance,
+    total_deposit: user.total_deposit,
+    address: user.address,
+    city: user.city,
+    state: user.state,
+    country: user.country,
+    isSuspended: user.isSuspended,
+    otpSuspended: user.otpSuspended,
+    isVerified: user.isVerified,
+    kycVerified: user.kycVerified,
+    verifiedStatus: user.verifiedStatus,
+    image: user.image,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt
+  },
+  admin: {
+    _id: req.user._id,
+    firstname: req.user.firstname,
+    midname: req.user.midname,
+    lastname: req.user.lastname,
+    email: req.user.email,
+    image: req.user.image
+  }
+});
   } catch (err) {
     console.error(err);
     return res.status(500).json({ success: false, message: 'Server error' });
