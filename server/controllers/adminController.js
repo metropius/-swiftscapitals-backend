@@ -1011,22 +1011,30 @@ module.exports.allTTicketPage = async (req, res) => {
   }
 };
 
-module.exports.viewTicketPage = async (req, res) => {
-  try {
-    const ticket = await Ticket.findById(req.params.id)
-      .populate('owner', 'firstname lastname email phone country')
-      .lean();
-
-    if (!ticket) {
-      return res.status(404).json({ success: false, message: 'Ticket not found' });
-    }
-
-    res.render('viewTickets', { ticket });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ success: false, message: 'Server error' });
+return res.status(200).json({
+  success: true,
+  ticket: {
+    _id: ticket._id,
+    subject: ticket.subject,
+    name: ticket.name,
+    email: ticket.email,
+    priority: ticket.priority,
+    status: ticket.status,
+    message: ticket.message,
+    image: ticket.image,
+    owner: ticket.owner, // populated: firstname, lastname, email, phone, country
+    createdAt: ticket.createdAt,
+    updatedAt: ticket.updatedAt
+  },
+  admin: {
+    _id: req.user._id,
+    firstname: req.user.firstname,
+    midname: req.user.midname,
+    lastname: req.user.lastname,
+    email: req.user.email,
+    image: req.user.image
   }
-};
+});
 
 module.exports.deleteTicket = async (req, res) => {
   try {
