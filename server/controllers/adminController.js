@@ -1690,12 +1690,20 @@ module.exports.allVerification = async (req, res) => {
       .limit(perPage)
       .lean();
 
-    res.render('allVerification', {
-      verifications,
-      page,
-      totalPages,
-      perPage
-    });
+    return res.status(200).json({
+  success: true,
+  verifications,
+  page: Number(page),
+  totalPages,
+  admin: {
+    _id: req.user._id,
+    firstname: req.user.firstname,
+    midname: req.user.midname,
+    lastname: req.user.lastname,
+    email: req.user.email,
+    image: req.user.image
+  }
+});
   } catch (error) {
     console.error(error);
     res.render('allVerification', {
@@ -1719,7 +1727,49 @@ module.exports.viewVerify = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Verification not found' });
     }
 
-    res.render('viewVerify', { verification });
+    return res.status(200).json({
+  success: true,
+  verification: {
+    _id: verification._id,
+    fullname: verification.fullname,
+    email: verification.email,
+    tel: verification.tel,
+    title: verification.title,
+    gender: verification.gender,
+    dateofBirth: verification.dateofBirth,
+    zipcode: verification.zipcode,
+    statenumber: verification.statenumber,
+    accounttype: verification.accounttype,
+    employer: verification.employer,
+    income: verification.income,
+    address: verification.address,
+    city: verification.city,
+    state: verification.state,
+    country: verification.country,
+    kinname: verification.kinname,
+    kinaddress: verification.kinaddress,
+    relationship: verification.relationship,
+    age: verification.age,
+    document_type: verification.document_type,
+    frontimg: verification.frontimg,
+    backimg: verification.backimg,
+    photo: verification.photo,
+    status: verification.status,
+    rejectionReason: verification.rejectionReason,
+    reviewedBy: verification.reviewedBy, // populated { firstname, lastname }
+    reviewedAt: verification.reviewedAt,
+    createdAt: verification.createdAt,
+    updatedAt: verification.updatedAt
+  },
+  admin: {
+    _id: req.user._id,
+    firstname: req.user.firstname,
+    midname: req.user.midname,
+    lastname: req.user.lastname,
+    email: req.user.email,
+    image: req.user.image
+  }
+});
   } catch (error) {
     console.error(error);
     return res.status(500).json({ success: false, message: 'Server error' });
@@ -1736,7 +1786,23 @@ module.exports.editVerify = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Verification not found' });
     }
 
-    res.render('editVerify', { verification });
+   return res.status(200).json({
+  success: true,
+  verification: {
+    _id: verification._id,
+    fullname: verification.fullname,
+    status: verification.status,
+    rejectionReason: verification.rejectionReason || ''
+  },
+  admin: {
+    _id: req.user._id,
+    firstname: req.user.firstname,
+    midname: req.user.midname,
+    lastname: req.user.lastname,
+    email: req.user.email,
+    image: req.user.image
+  }
+});
   } catch (error) {
     console.error(error);
     return res.status(500).json({ success: false, message: 'Server error' });
