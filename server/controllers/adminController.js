@@ -588,22 +588,33 @@ module.exports.deleteDeposit = async (req, res) => {
 // ******************* LOAN CONTROLLERS *************************//
 
 module.exports.allLoanPage = async (req, res) => {
-  let perPage = 50;
-  let page = parseInt(req.query.page) || 1;
+  const perPage = 50;
+  const page = parseInt(req.query.page, 10) || 1;
 
   try {
     const query = {};
     const total = await Loan.countDocuments(query);
-    const totalPages = Math.ceil(total / perPage);
+    const totalPages = Math.ceil(total / perPage) || 1;
 
     const loans = await Loan.find(query)
-      .populate('owner', 'firstname lastname email phone country')
+      .populate('owner', 'firstname lastname email')
       .sort({ createdAt: -1 })
       .skip(perPage * (page - 1))
       .limit(perPage)
       .lean();
 
-    res.render('allLoans', {
+    return res.status(200).json({
+      success: true,
+      admin: req.user
+        ? {
+            _id: req.user._id,
+            firstname: req.user.firstname,
+            midname: req.user.midname,
+            lastname: req.user.lastname,
+            email: req.user.email,
+            image: req.user.image
+          }
+        : null,
       loans,
       page,
       totalPages,
@@ -611,12 +622,13 @@ module.exports.allLoanPage = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    res.render('allLoans', {
+    return res.status(500).json({
+      success: false,
+      message: 'Could not load loans',
       loans: [],
       page: 1,
       totalPages: 1,
-      perPage,
-      error: 'Could not load loans'
+      perPage
     });
   }
 };
@@ -628,28 +640,70 @@ module.exports.viewLoan = async (req, res) => {
       .lean();
 
     if (!loan) {
-      return res.status(404).json({ success: false, message: 'Loan not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Loan not found'
+      });
     }
 
-    res.render('viewsLoan', { loan });
+    return res.status(200).json({
+      success: true,
+      loan,
+      admin: req.user
+        ? {
+            _id: req.user._id,
+            firstname: req.user.firstname,
+            midname: req.user.midname,
+            lastname: req.user.lastname,
+            email: req.user.email,
+            image: req.user.image
+          }
+        : null
+    });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    console.error('viewLoan error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
   }
 };
 
 module.exports.editLoan = async (req, res) => {
   try {
     const loan = await Loan.findById(req.params.id).lean();
+
     if (!loan) {
-      return res.status(404).json({ success: false, message: 'Loan not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Loan not found'
+      });
     }
-    res.render('editLoan', { loan });
+
+    return res.status(200).json({
+      success: true,
+      loan,
+      admin: req.user
+        ? {
+            _id: req.user._id,
+            firstname: req.user.firstname,
+            midname: req.user.midname,
+            lastname: req.user.lastname,
+            email: req.user.email,
+            image: req.user.image
+          }
+        : null
+    });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    console.error('editLoan error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
   }
 };
+
+
 
 module.exports.editLoan_post = async (req, res) => {
   try {
@@ -997,13 +1051,13 @@ module.exports.deleteTicket = async (req, res) => {
 // ********************************* ALL CARDS *********************************
 
 module.exports.allCardPage = async (req, res) => {
-  let perPage = 50;
-  let page = parseInt(req.query.page) || 1;
+  const perPage = 50;
+  const page = parseInt(req.query.page, 10) || 1;
 
   try {
     const query = {};
     const total = await Card.countDocuments(query);
-    const totalPages = Math.ceil(total / perPage);
+    const totalPages = Math.ceil(total / perPage) || 1;
 
     const cards = await Card.find(query)
       .populate('owner', 'firstname lastname email phone country')
@@ -1012,7 +1066,18 @@ module.exports.allCardPage = async (req, res) => {
       .limit(perPage)
       .lean();
 
-    res.render('allCards', {
+    return res.status(200).json({
+      success: true,
+      admin: req.user
+        ? {
+            _id: req.user._id,
+            firstname: req.user.firstname,
+            midname: req.user.midname,
+            lastname: req.user.lastname,
+            email: req.user.email,
+            image: req.user.image
+          }
+        : null,
       cards,
       page,
       totalPages,
@@ -1020,12 +1085,13 @@ module.exports.allCardPage = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    res.render('allCards', {
+    return res.status(500).json({
+      success: false,
+      message: 'Could not load cards',
       cards: [],
       page: 1,
       totalPages: 1,
-      perPage,
-      error: 'Could not load cards'
+      perPage
     });
   }
 };
@@ -1037,28 +1103,69 @@ module.exports.viewCard = async (req, res) => {
       .lean();
 
     if (!card) {
-      return res.status(404).json({ success: false, message: 'Card not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Card not found'
+      });
     }
 
-    res.render('viewCard', { card });
+    return res.status(200).json({
+      success: true,
+      card,
+      admin: req.user
+        ? {
+            _id: req.user._id,
+            firstname: req.user.firstname,
+            midname: req.user.midname,
+            lastname: req.user.lastname,
+            email: req.user.email,
+            image: req.user.image
+          }
+        : null
+    });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    console.error('viewCard error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
   }
 };
 
 module.exports.editCard = async (req, res) => {
   try {
     const card = await Card.findById(req.params.id).lean();
+
     if (!card) {
-      return res.status(404).json({ success: false, message: 'Card not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Card not found'
+      });
     }
-    res.render('editCard', { card });
+
+    return res.status(200).json({
+      success: true,
+      card,
+      admin: req.user
+        ? {
+            _id: req.user._id,
+            firstname: req.user.firstname,
+            midname: req.user.midname,
+            lastname: req.user.lastname,
+            email: req.user.email,
+            image: req.user.image
+          }
+        : null
+    });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    console.error('editCard error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
   }
 };
+
 
 module.exports.editCard_post = async (req, res) => {
   try {
@@ -1127,13 +1234,13 @@ module.exports.deleteCard = async (req, res) => {
 // ********************************* ALL WALLETS *********************************
 
 module.exports.allWalletPage = async (req, res) => {
-  let perPage = 50;
-  let page = parseInt(req.query.page) || 1;
+  const perPage = 50;
+  const page = parseInt(req.query.page, 10) || 1;
 
   try {
     const query = {};
     const total = await Wallet.countDocuments(query);
-    const totalPages = Math.ceil(total / perPage);
+    const totalPages = Math.ceil(total / perPage) || 1;
 
     const wallets = await Wallet.find(query)
       .populate('updatedBy', 'firstname lastname email')
@@ -1142,7 +1249,18 @@ module.exports.allWalletPage = async (req, res) => {
       .limit(perPage)
       .lean();
 
-    res.render('allWallet', {
+    return res.status(200).json({
+      success: true,
+      admin: req.user
+        ? {
+            _id: req.user._id,
+            firstname: req.user.firstname,
+            midname: req.user.midname,
+            lastname: req.user.lastname,
+            email: req.user.email,
+            image: req.user.image
+          }
+        : null,
       wallets,
       page,
       totalPages,
@@ -1150,12 +1268,13 @@ module.exports.allWalletPage = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    res.render('allWallet', {
+    return res.status(500).json({
+      success: false,
+      message: 'Could not load wallets',
       wallets: [],
       page: 1,
       totalPages: 1,
-      perPage,
-      error: 'Could not load wallets'
+      perPage
     });
   }
 };
@@ -1167,28 +1286,69 @@ module.exports.viewWallet = async (req, res) => {
       .lean();
 
     if (!wallet) {
-      return res.status(404).json({ success: false, message: 'Wallet not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Wallet not found'
+      });
     }
 
-    res.render('viewWallet', { wallet });
+    return res.status(200).json({
+      success: true,
+      wallet,
+      admin: req.user
+        ? {
+            _id: req.user._id,
+            firstname: req.user.firstname,
+            midname: req.user.midname,
+            lastname: req.user.lastname,
+            email: req.user.email,
+            image: req.user.image
+          }
+        : null
+    });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    console.error('viewWallet error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
   }
 };
 
 module.exports.editWallet = async (req, res) => {
   try {
     const wallet = await Wallet.findById(req.params.id).lean();
+
     if (!wallet) {
-      return res.status(404).json({ success: false, message: 'Wallet not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Wallet not found'
+      });
     }
-    res.render('editWallet', { wallet });
+
+    return res.status(200).json({
+      success: true,
+      wallet,
+      admin: req.user
+        ? {
+            _id: req.user._id,
+            firstname: req.user.firstname,
+            midname: req.user.midname,
+            lastname: req.user.lastname,
+            email: req.user.email,
+            image: req.user.image
+          }
+        : null
+    });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    console.error('editWallet error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
   }
 };
+
 
 module.exports.editWallet_post = async (req, res) => {
   try {
@@ -1276,8 +1436,30 @@ module.exports.deleteWallet = async (req, res) => {
 // ────────────────────────────────────────────────
 
 module.exports.addWalletPage = async (req, res) => {
-  res.render('addWallet');
+  try {
+    return res.status(200).json({
+      success: true,
+      admin: req.user
+        ? {
+            _id: req.user._id,
+            firstname: req.user.firstname,
+            midname: req.user.midname,
+            lastname: req.user.lastname,
+            email: req.user.email,
+            image: req.user.image
+          }
+        : null
+    });
+  } catch (error) {
+    console.error('addWalletPage error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
 };
+
+
 
 module.exports.addWallet_post = async (req, res) => {
   try {
@@ -1313,22 +1495,33 @@ module.exports.addWallet_post = async (req, res) => {
 // ********************************* ALL IRS REFUND *********************************
 
 module.exports.allRefundPage = async (req, res) => {
-  let perPage = 50;
-  let page = parseInt(req.query.page) || 1;
+  const perPage = 50;
+  const page = parseInt(req.query.page, 10) || 1;
 
   try {
     const query = {};
     const total = await IRSRefund.countDocuments(query);
-    const totalPages = Math.ceil(total / perPage);
+    const totalPages = Math.ceil(total / perPage) || 1;
 
     const refunds = await IRSRefund.find(query)
-      .populate('user', 'firstname lastname email phone country')
+      .populate('user', 'firstname lastname email')
       .sort({ createdAt: -1 })
       .skip(perPage * (page - 1))
       .limit(perPage)
       .lean();
 
-    res.render('allRefund', {
+    return res.status(200).json({
+      success: true,
+      admin: req.user
+        ? {
+            _id: req.user._id,
+            firstname: req.user.firstname,
+            midname: req.user.midname,
+            lastname: req.user.lastname,
+            email: req.user.email,
+            image: req.user.image
+          }
+        : null,
       refunds,
       page,
       totalPages,
@@ -1336,12 +1529,13 @@ module.exports.allRefundPage = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    res.render('allRefund', {
+    return res.status(500).json({
+      success: false,
+      message: 'Could not load refunds',
       refunds: [],
       page: 1,
       totalPages: 1,
-      perPage,
-      error: 'Could not load IRS refunds'
+      perPage
     });
   }
 };
@@ -1353,28 +1547,69 @@ module.exports.viewRefund = async (req, res) => {
       .lean();
 
     if (!refund) {
-      return res.status(404).json({ success: false, message: 'Refund request not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Refund not found'
+      });
     }
 
-    res.render('viewRefund', { refund });
+    return res.status(200).json({
+      success: true,
+      refund,
+      admin: req.user
+        ? {
+            _id: req.user._id,
+            firstname: req.user.firstname,
+            midname: req.user.midname,
+            lastname: req.user.lastname,
+            email: req.user.email,
+            image: req.user.image
+          }
+        : null
+    });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    console.error('viewRefund error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
   }
 };
 
 module.exports.editRefund = async (req, res) => {
   try {
     const refund = await IRSRefund.findById(req.params.id).lean();
+
     if (!refund) {
-      return res.status(404).json({ success: false, message: 'Refund request not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Refund not found'
+      });
     }
-    res.render('editRefund', { refund });
+
+    return res.status(200).json({
+      success: true,
+      refund,
+      admin: req.user
+        ? {
+            _id: req.user._id,
+            firstname: req.user.firstname,
+            midname: req.user.midname,
+            lastname: req.user.lastname,
+            email: req.user.email,
+            image: req.user.image
+          }
+        : null
+    });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    console.error('editRefund error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
   }
 };
+
 
 module.exports.editRefund_post = async (req, res) => {
   try {
