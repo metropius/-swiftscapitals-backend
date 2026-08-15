@@ -985,12 +985,20 @@ module.exports.allTTicketPage = async (req, res) => {
       .limit(perPage)
       .lean();
 
-    res.render('allTickets', {
-      tickets,
-      page,
-      totalPages,
-      perPage
-    });
+     return res.status(200).json({
+  success: true,
+  tickets,
+  page: Number(page),
+  totalPages,
+  admin: {
+    _id: req.user._id,
+    firstname: req.user.firstname,
+    midname: req.user.midname,
+    lastname: req.user.lastname,
+    email: req.user.email,
+    image: req.user.image
+  }
+});
   } catch (error) {
     console.error(error);
     res.render('allTickets', {
