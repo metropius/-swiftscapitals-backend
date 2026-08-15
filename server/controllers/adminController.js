@@ -1011,7 +1011,17 @@ module.exports.allTTicketPage = async (req, res) => {
   }
 };
 
-return res.status(200).json({
+module.exports.viewTicketPage = async (req, res) => {
+  try {
+    const ticket = await Ticket.findById(req.params.id)
+      .populate('owner', 'firstname lastname email phone country')
+      .lean();
+
+    if (!ticket) {
+      return res.status(404).json({ success: false, message: 'Ticket not found' });
+    }
+
+    return res.status(200).json({
   success: true,
   ticket: {
     _id: ticket._id,
@@ -1035,6 +1045,11 @@ return res.status(200).json({
     image: req.user.image
   }
 });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
 
 module.exports.deleteTicket = async (req, res) => {
   try {
